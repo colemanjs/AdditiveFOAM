@@ -1,0 +1,4 @@
+derivedFvPatchFields/mixedTemperature/mixedTemperatureFvPatchScalarField.C
+additiveFoam.C
+
+EXE = $(FOAM_USER_APPBIN)/macroAdditiveFoam

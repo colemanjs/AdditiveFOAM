@@ -1,0 +1,30 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+   \\    /   O peration     | Website:  https://openfoam.org
+    \\  /    A nd           | Version:  10
+     \\/     M anipulation  |
+\*---------------------------------------------------------------------------*/
+
+topSurface
+{
+    type            surfaces;
+    libs            ("libsampling.so");
+
+    surfaceFormat   raw;
+
+    fields          ( T alpha.solid );
+
+    interpolationScheme cellPoint;
+
+    surfaces
+    (
+        top
+        {
+            type            patch;
+            patches         ( "top" );
+        }
+    );
+}
+
+// *********************************************************************** //
