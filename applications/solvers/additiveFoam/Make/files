@@ -1,6 +1,0 @@
-derivedFvPatchFields/mixedTemperature/mixedTemperatureFvPatchScalarField.C
-derivedFvPatchFields/marangoni/marangoniFvPatchVectorField.C
-
-additiveFoam.C
-
-EXE = $(FOAM_USER_APPBIN)/additiveFoam
