@@ -83,23 +83,6 @@ Foam::movingBeam::movingBeam
 
 // * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * * //
 
-vector Foam::movingBeam::velocity()
-{
-    const label i = index_;
-    
-    vector velocity_ = vector(small, small, small);
-    
-    if (path_[i].mode() == 0)
-    {
-        vector d = path_[i].position() - path_[i-1].position();
-        d /= (mag(d) + small);
-        velocity_ = max(path_[i].parameter() * d, velocity_);
-    }
-
-    return velocity_;
-
-}
-
 void Foam::movingBeam::readPath()
 {
     const word pName_(beamDict_.lookup("pathName"));
@@ -239,33 +222,33 @@ Foam::movingBeam::findIndex(const scalar time)
 }
 
 
-void Foam::movingBeam::adjustDeltaT(scalar& dt)
+scalar Foam::movingBeam::deltaT(scalar time, vector dimensions)
 {
-    if (activePath() && hitPathIntervals_)
+    label i = findIndex(time);
+    
+    if (path_[i].mode() == 0)
+    {
+        vector velocity_ =
+            vector(path_[i].parameter(), path_[i].parameter(), small);
+        
+        return cmptMin(cmptDivide(dimensions, velocity_));
+    }
+    else
     {
         scalar timeToNextPath = 0;
-        label i = index_;
-
+        
         while (timeToNextPath < eps)
         {
-            timeToNextPath = max(0, path_[i].time() - runTime_.value());
-
             i++;
+            timeToNextPath = max(0, path_[i].time() - time);
 
             if (i == path_.size()) 
             {
                 break;
             }
         }
-
-        const scalar nSteps = timeToNextPath/dt;
-                
-        if (nSteps < labelMax)
-        {
-            // allow time step to dilate 1% to hit target path time
-            const label nStepsToNextPath = label(max(nSteps, 1) + 0.99);
-            dt = min(timeToNextPath/nStepsToNextPath, dt);
-        }
+        
+        return timeToNextPath;
     }
 }
 

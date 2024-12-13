@@ -70,7 +70,7 @@ private:
         volScalarField qDot_;
                 
         //- List to each beam instance
-        PtrList<heatSourceModel> sources_;
+        //PtrList<heatSourceModel> sources_;
 
 public:
 
@@ -86,6 +86,9 @@ public:
     ~movingHeatSourceModel();
 
     // Member Functions
+
+        //- List to each beam instance
+        PtrList<heatSourceModel> sources_;
     
         //- Return const access to the total volumetric heating
         const volScalarField& qDot() const

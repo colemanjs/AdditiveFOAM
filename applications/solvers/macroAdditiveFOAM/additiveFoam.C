@@ -54,18 +54,19 @@ int main(int argc, char *argv[])
     #include "createControl.H"
     #include "createFields.H"
     #include "createTimeControls.H"
-
+    
     // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
     
     Info<< "\nStarting time loop\n" << endl;
 
+    #include "initialDeltaT.H"
+    
     while (runTime.run())
     {
         #include "updateProperties.H"
-        #include "readTimeControls.H"
+        #include "readTimeControls.H"     
+        #include "setDeltaT.H"
         
-        Info<< "deltaT = " <<  runTime.deltaTValue() << endl;
-
         sources.update();
         
         runTime++;

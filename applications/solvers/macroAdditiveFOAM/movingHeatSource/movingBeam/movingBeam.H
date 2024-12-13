@@ -160,16 +160,19 @@ public:
         {
             return power_;
         }
-
-        //- Return current segment of the moving beam
-        vector velocity();
                                
         //- Read the path file
         void readPath();
         
         //- Returns true if the simulation time is less than path endTime
         bool activePath();
-        
+
+        //- Returns true if the simulation time is less than path endTime
+        inline scalar endTime() const
+        {
+            return endTime_;
+        }
+       
         //- Move the beam to the provided time
         void move(const scalar time);
         
@@ -177,7 +180,7 @@ public:
         label findIndex(const scalar time);
 
         //- Adjust solution time step to hit pathInterval
-        void adjustDeltaT(scalar& dt);
+        scalar deltaT(scalar time, vector dimensions);
 };
 
 

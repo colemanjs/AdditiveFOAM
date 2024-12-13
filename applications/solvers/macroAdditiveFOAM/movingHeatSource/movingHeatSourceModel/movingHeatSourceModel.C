@@ -91,19 +91,21 @@ Foam::movingHeatSourceModel::~movingHeatSourceModel()
 
 void Foam::movingHeatSourceModel::adjustDeltaT(scalar& deltaT)
 {
+/*
     forAll(sources_, i)
     {
-        movingBeam& beam_ = sources_[i].beam();/*
+        movingBeam& beam_ = sources_[i].beam();
         
         const scalar dt_ =
         (
             cmptMin(cmptDivide(sources_[i].dimensions(), beam_.velocity()))
         );
                 
-        deltaT = min(deltaT, dt_);*/
+        deltaT = min(deltaT, dt_);
         
         beam_.adjustDeltaT(deltaT);
     }
+*/
 }
 
 void Foam::movingHeatSourceModel::update()
@@ -113,12 +115,10 @@ void Foam::movingHeatSourceModel::update()
     forAll(sources_, i)
     {
         if (sources_[i].beam().activePath())
-        {
+        {        
             scalar pathTime = mesh_.time().value();
 
             const scalar nextTime = pathTime + mesh_.time().deltaTValue();
-
-            const scalar beam_dt = 5e-5;
 
             volScalarField qDoti
             (
@@ -134,8 +134,14 @@ void Foam::movingHeatSourceModel::update()
             
             scalar sumWeights = 0.0;
 
+            movingBeam& beam_ = sources_[i].beam();
+            
+            vector dimensions_ = sources_[i].dimensions();
+                        
             while ((nextTime - pathTime) > small)
             {
+                scalar beam_dt = beam_.deltaT(pathTime, dimensions_);
+                
                 scalar dt = min(beam_dt, max(0, nextTime - pathTime));
 
                 pathTime += dt;
