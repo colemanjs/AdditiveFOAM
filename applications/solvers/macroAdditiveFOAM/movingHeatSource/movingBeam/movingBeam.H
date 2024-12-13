@@ -167,6 +167,10 @@ public:
         //- Returns true if the simulation time is less than path endTime
         bool activePath();
 
+
+        //- Returns true if the time is less than path endTime
+        bool activePath(scalar time);
+        
         //- Returns true if the simulation time is less than path endTime
         inline scalar endTime() const
         {

@@ -7,4 +7,4 @@ cd ${0%/*} || exit 1    # Run from this directory
 # AdditiveFOAM
 runApplication blockMesh
 
-python run_layers.py -n_layers 772 -n_cells_per_layer 1 -layer_thickness 50e-6 -layer_time 60
+python run_layers.py -n_layers 10 -n_cells_per_layer 1 -layer_thickness 50e-6 -layer_time 60

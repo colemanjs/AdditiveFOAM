@@ -41,16 +41,17 @@ def plot_errorbars_from_csv(directory):
 
     # Plot the errorbar plot
     means = np.array(means)
-    errors = np.array(errors)
+    errors = 2.0*np.array(errors)
     plt.xlim(min(layer_numbers), max(layer_numbers))
     
     data_range = max(means + errors) - min(means - errors)
     padding = data_range * 0.1
-    plt.ylim(min(means - errors) - padding, max(means + errors) + padding)
+    plt.ylim(300, max(means + errors) + padding)
 
     # Plot the errorbar plot
-    plt.errorbar(layer_numbers, means, yerr=errors, fmt='o', color='C0', capsize=5)
-    plt.plot(layer_numbers, means, linestyle='-', marker='', color='C0')
+    plt.plot(layer_numbers, means, linestyle='-', color='C0', label='Mean Temperature')
+    plt.fill_between(layer_numbers, means - errors, means + errors, color='C0', alpha=0.3, label='±σ')
+
 
 
     plt.xlabel("Layer No.")

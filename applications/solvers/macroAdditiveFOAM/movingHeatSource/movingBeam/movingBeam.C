@@ -150,6 +150,10 @@ bool Foam::movingBeam::activePath()
     return ((endTime_ - runTime_.value()) > eps);
 }
 
+bool Foam::movingBeam::activePath(scalar time)
+{
+    return ((endTime_ - time) > eps);
+}
 
 void Foam::movingBeam::move(const scalar time)
 {

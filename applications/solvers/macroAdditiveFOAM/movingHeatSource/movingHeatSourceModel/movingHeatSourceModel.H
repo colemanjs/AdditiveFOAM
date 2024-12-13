@@ -68,9 +68,6 @@ private:
         
         //- Total volumetric power of all beams
         volScalarField qDot_;
-                
-        //- List to each beam instance
-        //PtrList<heatSourceModel> sources_;
 
 public:
 
@@ -95,10 +92,7 @@ public:
         {
             return qDot_;
         }
-        
-        //- Adjust deltaT using the current state of each beam
-        void adjustDeltaT(scalar& deltaT);
-        
+                
         //- Update total qDot field
         void update();
 };

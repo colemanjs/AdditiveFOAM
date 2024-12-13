@@ -3,7 +3,6 @@ import shutil
 import argparse
 import subprocess
 import polars as pl
-from myna.application.additivefoam.path import convert_peregrine_scanpath
 
 # Helper functions
 def run_command(command, capture_output=False):
@@ -132,6 +131,27 @@ def convert_temperature_output(case_dir, output_file):
     # Write the DataFrame to a CSV file
     df.write_csv(output_file)
 
+def convert_peregrine_scanpath(input_file, output_file, power):
+    data = pl.read_csv(input_file, separator="\t")
+    data = data.rename({
+        "X(mm)": "X(mm)",
+        "Y(mm)": "Y(mm)",
+        "Z(mm)": "Z(mm)",
+        "Pmod": "Pmod",
+        "tParam": "tParam"
+    }) 
+    data = (
+        data.with_columns([
+            (pl.col("X(mm)") / 1000.0).alias("X(m)"),  # Convert to meters
+            (pl.col("Y(mm)") / 1000.0).alias("Y(m)"),  # Convert to meters
+            pl.lit(0.0).alias("Z(m)"),                 # Set Z to zero
+            (pl.col("Pmod") * power).alias("Power"),   # Convert to Watts
+        ])
+        .rename({"tParam": "Parameter"})               # Rename to Parameter
+    )
+    data = data.select(["Mode", "X(m)", "Y(m)", "Z(m)", "Power", "Parameter"])
+    data.write_csv(output_file, separator="\t")
+
 # Main function
 def main():
     # Parse arguements
@@ -181,7 +201,7 @@ def main():
         convert_peregrine_scanpath(
             os.path.join(path_dir, f"{layer+1:07}.txt"),
             os.path.join(case_dir, "constant", "scanPath"),
-            380.0)
+            300.0)
 
         # Update times and map fields between layers
         if layer > 0:
@@ -233,6 +253,10 @@ def main():
             os.path.join(output_dir, f"temperature_{layer+1:07}.csv")
         )
 
+        # Remove previous layer to save disk space
+        if layer > 0 :
+            shutil.rmtree(previous_case)
+        
     os.chdir(base_dir)
     print("Simulation completed for all layers.")
 

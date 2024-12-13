@@ -89,25 +89,6 @@ Foam::movingHeatSourceModel::~movingHeatSourceModel()
 
 // * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * * //
 
-void Foam::movingHeatSourceModel::adjustDeltaT(scalar& deltaT)
-{
-/*
-    forAll(sources_, i)
-    {
-        movingBeam& beam_ = sources_[i].beam();
-        
-        const scalar dt_ =
-        (
-            cmptMin(cmptDivide(sources_[i].dimensions(), beam_.velocity()))
-        );
-                
-        deltaT = min(deltaT, dt_);
-        
-        beam_.adjustDeltaT(deltaT);
-    }
-*/
-}
-
 void Foam::movingHeatSourceModel::update()
 {
     qDot_ = dimensionedScalar("Zero", qDot_.dimensions(), 0.0);
@@ -146,10 +127,13 @@ void Foam::movingHeatSourceModel::update()
 
                 pathTime += dt;
 
-                sources_[i].beam().move(pathTime);
-                                
-                qDoti += dt*sources_[i].qDot();
-
+                if (sources_[i].beam().activePath(pathTime))
+                {
+                    sources_[i].beam().move(pathTime);
+                                    
+                    qDoti += dt*sources_[i].qDot();
+                }
+                
                 sumWeights += dt;
             }
             
