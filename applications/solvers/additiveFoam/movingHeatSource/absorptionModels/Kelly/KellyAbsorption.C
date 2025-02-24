@@ -89,8 +89,11 @@ Foam::absorptionModels::Kelly::eta
             G = 0.5 / (1.0 + aspectRatio);
         }
         
-        return (eta0_ * (1.0 + (1.0 - eta0_)*(G - F)) 
-                / (1.0 - (1.0 - eta0_)*(1.0 - G))).value();
+        const scalar eta_ = 
+             (eta0_ * (1.0 + (1.0 - eta0_)*(G - F)) 
+           / (1.0 - (1.0 - eta0_)*(1.0 - G))).value();
+        
+        return max(eta_, etaMin_.value());
     }
     else
     {

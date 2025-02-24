@@ -132,7 +132,7 @@ void Foam::heatSourceModel::updateDimensions()
 
     const scalar searchRadius
     (
-        max(staticDimensions_.x(), staticDimensions_.y())
+        max(3.0*staticDimensions_.x(), 3.0*staticDimensions_.y())
     );
 
     // find maximum isotherm depth within supplied beam radius
@@ -278,8 +278,8 @@ Foam::heatSourceModel::qDot()
         
         treeBoundBox beamBb
         (
-            position_ - 1.5*dimensions_,
-            position_ + 1.5*dimensions_
+            position_ - 2*dimensions_,
+            position_ + 2*dimensions_
         );
 
         hexMatcher hex;
