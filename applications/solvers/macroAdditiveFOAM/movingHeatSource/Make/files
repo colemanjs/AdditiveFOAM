@@ -13,4 +13,4 @@ heatSourceModels/Gaussian/Gaussian.C
 
 movingHeatSourceModel/movingHeatSourceModel.C
 
-LIB = $(FOAM_USER_LIBBIN)/libmovingBeamModels
+LIB = $(FOAM_USER_LIBBIN)/libmacroMovingBeamModels
