@@ -5,7 +5,7 @@
     \\  /    A nd           | Copyright (C) 2024 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
-                Copyright (C) 2023 Oak Ridge National Laboratory                
+                Copyright (C) 2023 Oak Ridge National Laboratory
 -------------------------------------------------------------------------------
 License
     This file is part of OpenFOAM.
@@ -34,6 +34,7 @@ License
 #include "OFstream.H"
 #include "OSspecific.H"
 #include "labelVector.H"
+#include "thermoPath.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
@@ -42,7 +43,7 @@ namespace Foam
 namespace functionObjects
 {
     defineTypeNameAndDebug(solidificationData, 0);
-    
+
     addToRunTimeSelectionTable
     (
         functionObject,
@@ -51,6 +52,15 @@ namespace functionObjects
     );
 }
 }
+
+
+// * * * * * * * * * * * * * Private Member Functions  * * * * * * * * * * * //
+
+void Foam::functionObjects::solidificationData::correct()
+{
+    setOverlapCells();
+}
+
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
@@ -62,23 +72,22 @@ Foam::functionObjects::solidificationData::solidificationData
 )
 :
     fvMeshFunctionObject(name, runTime, dict),
-    T_(mesh_.lookupObject<VolField<scalar>>("T")),
+    T_(mesh_.lookupObject<volScalarField>("T")),
     R_
     (
         IOobject
         (
             "R",
-            mesh_.time().timeName(),
+            mesh_.time().name(),
             mesh_,
             IOobject::NO_READ,
             IOobject::NO_WRITE
         ),
         fvc::ddt(T_)
-    ),
-    searchEngine_(mesh_, polyMesh::CELL_TETS)
+    )
 {
     read(dict);
-    
+
     setOverlapCells();
 }
 
@@ -89,18 +98,25 @@ Foam::functionObjects::solidificationData::~solidificationData()
 {}
 
 
-// * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
+// * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * * //
 
 bool Foam::functionObjects::solidificationData::read(const dictionary& dict)
 {
     box_ = dict.lookup("box");
-    isoValue_ = dict.lookup<scalar>("isoValue");
-    
+
+    if (!dict.readIfPresent("isoValue", isoValue_))
+    {
+        isoValue_ = thermoPath(mesh_).liquidus();
+    }
+
     return true;
 }
 
+
 void Foam::functionObjects::solidificationData::setOverlapCells()
 {
+    overlapCells.clear();
+
     // create a compact cell-stencil using the overlap sub-space
     const pointField& points = mesh_.points();
 
@@ -141,46 +157,44 @@ Foam::wordList Foam::functionObjects::solidificationData::fields() const
 
 bool Foam::functionObjects::solidificationData::execute()
 {
-    //- Get current time
     const scalar& time = mesh_.time().value();
 
-    //- Get the temperature at the previous time
-    const volScalarField& T0_ = T_.oldTime();
-    
-    //- Calculate the thermal gradient
-    const volScalarField G("G", mag(fvc::grad(T_)));
-    
+    const volScalarField& T0 = T_.oldTime();
+
+    const volVectorField G("G", fvc::grad(T_));
+
     forAll(overlapCells, i)
     {
-        label celli = overlapCells[i];
-        
-        // Cooled below specified isotherm
-        if ((T0_[celli] > isoValue_) && (T_[celli] <= isoValue_))
+        const label celli = overlapCells[i];
+
+        if ((T0[celli] > isoValue_) && (T_[celli] <= isoValue_))
         {
             const scalar Ri = mag(R_[celli]);
-            const scalar Gi = max(G[celli], small);
+            const vector Gi = G[celli];
 
             const vector pt = mesh_.C()[celli];
 
-            List<scalar> event(7);
-            
+            List<scalar> event(9);
+
             event[0] = pt[0];
             event[1] = pt[1];
             event[2] = pt[2];
             event[3] = time;
             event[4] = Ri;
-            event[5] = Gi;
-            event[6] = Ri / Gi;
-                        
+            event[5] = Gi[0];
+            event[6] = Gi[1];
+            event[7] = Gi[2];
+            event[8] = Ri / max(mag(Gi), small);
+
             events.append(event);
         }
     }
 
-    //- Update cooling rate
     R_ = fvc::ddt(T_);
-       
+
     return true;
 }
+
 
 bool Foam::functionObjects::solidificationData::end()
 {
@@ -193,30 +207,31 @@ bool Foam::functionObjects::solidificationData::end()
        /mesh_.time().globalCaseName()
        /"solidificationData"
     );
-    
+
     mkDir(filePath);
 
     OFstream os
     (
        filePath + "/" + "data_" + Foam::name(Pstream::myProcNo()) + ".csv"
     );
-    
-    os << "x,y,z,ts,cr,g,v" << endl;
 
-    for(int i=0; i < events.size(); i++)
+    os << "x,y,z,ts,cr,gx,gy,gz,v" << endl;
+
+    forAll(events, i)
     {
-        int n = events[i].size() - 1;
+        const label n = events[i].size() - 1;
 
-        for(int j=0; j < n; j++)
+        for (label j=0; j<n; j++)
         {
             os << events[i][j] << ",";
         }
+
         os << events[i][n] << "\n";
     }
 
     Info<< "Successfully wrote solidification data in: "
-        << returnReduce(mesh_.time().cpuTimeIncrement(), maxOp<scalar>()) << " s"
-        << endl << endl;
+        << returnReduce(mesh_.time().cpuTimeIncrement(), maxOp<scalar>())
+        << " s" << endl << endl;
 
     return true;
 }
@@ -225,6 +240,54 @@ bool Foam::functionObjects::solidificationData::end()
 bool Foam::functionObjects::solidificationData::write()
 {
     return true;
+}
+
+
+void Foam::functionObjects::solidificationData::movePoints
+(
+    const polyMesh& mesh
+)
+{
+    if (&mesh == &mesh_)
+    {
+        correct();
+    }
+}
+
+
+void Foam::functionObjects::solidificationData::topoChange
+(
+    const polyTopoChangeMap& map
+)
+{
+    if (&map.mesh() == &mesh_)
+    {
+        correct();
+    }
+}
+
+
+void Foam::functionObjects::solidificationData::mapMesh
+(
+    const polyMeshMap& map
+)
+{
+    if (&map.mesh() == &mesh_)
+    {
+        correct();
+    }
+}
+
+
+void Foam::functionObjects::solidificationData::distribute
+(
+    const polyDistributionMap& map
+)
+{
+    if (&map.mesh() == &mesh_)
+    {
+        correct();
+    }
 }
 
 

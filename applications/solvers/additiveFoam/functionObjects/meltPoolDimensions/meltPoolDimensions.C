@@ -5,7 +5,7 @@
     \\  /    A nd           | Copyright (C) 2024 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
-                Copyright (C) 2023 Oak Ridge National Laboratory                
+                Copyright (C) 2023 Oak Ridge National Laboratory
 -------------------------------------------------------------------------------
 License
     This file is part of OpenFOAM.
@@ -33,6 +33,8 @@ License
 #include "fvc.H"
 #include "OSspecific.H"
 #include "labelVector.H"
+#include "treeBoundBox.H"
+#include "thermoPath.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
@@ -41,7 +43,7 @@ namespace Foam
 namespace functionObjects
 {
     defineTypeNameAndDebug(meltPoolDimensions, 0);
-    
+
     addToRunTimeSelectionTable
     (
         functionObject,
@@ -64,12 +66,13 @@ Foam::functionObjects::meltPoolDimensions::meltPoolDimensions
     T_(mesh_.lookupObject<VolField<scalar>>("T"))
 {
     read(dict);
-    
+
     if (Pstream::master())
     {
         const fileName probeDir
         (
-            mesh_.time().rootPath()/mesh_.time().globalCaseName()
+            mesh_.time().rootPath()
+           /mesh_.time().globalCaseName()
            /"postProcessing"/"meltPoolDimensions"
         );
 
@@ -83,7 +86,7 @@ Foam::functionObjects::meltPoolDimensions::meltPoolDimensions
             (
                 probeDir/Foam::name(isoValues_[i]) + ".csv"
             );
-            
+
             Info<< "melt pool dimensions log file name: "
                 << logFileName << endl;
 
@@ -92,7 +95,7 @@ Foam::functionObjects::meltPoolDimensions::meltPoolDimensions
                 i,
                 new OFstream(logFileName)
             );
-            
+
             logFilePtrs_[i] << "time(s),length(m),width(m),depth(m)" << endl;
         }
     }
@@ -109,9 +112,17 @@ Foam::functionObjects::meltPoolDimensions::~meltPoolDimensions()
 
 bool Foam::functionObjects::meltPoolDimensions::read(const dictionary& dict)
 {
-    isoValues_ = dict.lookup<scalarList>("isoValues");
+    if (!dict.readIfPresent("isoValues", isoValues_))
+    {
+        thermoPath thermo(mesh_);
+
+        isoValues_.setSize(2);
+        isoValues_[0] = thermo.liquidus();
+        isoValues_[1] = thermo.solidus();
+    }
+
     scanPathAngle_ = dict.lookupOrDefault<scalar>("scanPathAngle", 0.0);
-    
+
     return true;
 }
 
@@ -124,7 +135,7 @@ bool Foam::functionObjects::meltPoolDimensions::execute()
 {
     const labelUList& owner = mesh_.owner();
     const labelUList& neighbour = mesh_.neighbour();
-    
+
     const volVectorField& cc = mesh_.C();
 
     const scalar radians =
@@ -132,7 +143,7 @@ bool Foam::functionObjects::meltPoolDimensions::execute()
 
     const scalar s = sin(radians);
     const scalar c = cos(radians);
-  
+
     List<treeBoundBox> boundBoxes
     (
         isoValues_.size(),
@@ -140,8 +151,8 @@ bool Foam::functionObjects::meltPoolDimensions::execute()
     );
 
     // check internal faces
-    for(label facei=0; facei < mesh_.nInternalFaces(); facei++)
-    {        
+    for (label facei=0; facei < mesh_.nInternalFaces(); facei++)
+    {
         const label own = owner[facei];
         const label nei = neighbour[facei];
 
@@ -156,31 +167,31 @@ bool Foam::functionObjects::meltPoolDimensions::execute()
             if ((minFace < iso_) && (maxFace >= iso_))
             {
                 vector d = cc[nei] - cc[own];
-                
+
                 vector p =
                     cc[own] + d*(iso_ - T_[own])/(T_[nei] - T_[own]);
 
-                    vector p_rotated
+                    vector pRotated
                     (
                         p.x() * c + p.y() * s,
                         p.y() * c - p.x() * s,
                         p.z()
                     );
-                
+
                 boundBoxes[i].min() =
-                    min(p_rotated, boundBoxes[i].min());
+                    min(pRotated, boundBoxes[i].min());
 
                 boundBoxes[i].max() =
-                    max(p_rotated, boundBoxes[i].max());
+                    max(pRotated, boundBoxes[i].max());
             }
         }
     }
 
     // check boundary faces
     const volScalarField::Boundary& TBf = T_.boundaryField();
-    
+
     forAll(TBf, patchi)
-    {   
+    {
         const fvPatchScalarField& TPf = TBf[patchi];
 
         const labelUList& faceCells = TPf.patch().faceCells();
@@ -192,7 +203,7 @@ bool Foam::functionObjects::meltPoolDimensions::execute()
             (
                 cc.boundaryField()[patchi].patchNeighbourField()
             );
-            
+
             const scalarField fn(TPf.patchNeighbourField());
 
             forAll(faceCells, facei)
@@ -206,27 +217,27 @@ bool Foam::functionObjects::meltPoolDimensions::execute()
                 forAll(isoValues_, i)
                 {
                     const scalar iso_ = isoValues_[i];
-                    
+
                     // update the bounding box
                     if ((minFace < iso_) && (maxFace >= iso_))
                     {
                         vector d = ccn[facei] -  cc[own];
-                        
-                        vector p = 
+
+                        vector p =
                             cc[own] + d*(iso_ - T_[own])/(fn[facei] - T_[own]);
 
-                        vector p_rotated
+                        vector pRotated
                         (
                             p.x() * c + p.y() * s,
                             p.y() * c - p.x() * s,
                             p.z()
                         );
-                        
+
                         boundBoxes[i].min() =
-                            min(p_rotated, boundBoxes[i].min());
+                            min(pRotated, boundBoxes[i].min());
 
                         boundBoxes[i].max() =
-                            max(p_rotated, boundBoxes[i].max());
+                            max(pRotated, boundBoxes[i].max());
                     }
                 }
             }
@@ -235,54 +246,54 @@ bool Foam::functionObjects::meltPoolDimensions::execute()
         {
             // physical boundary : take face point if above iso value
             const vectorField& Cf = mesh_.Cf().boundaryField()[patchi];
-          
+
             const scalarField& pif(TPf.patchInternalField());
-            
+
             forAll(faceCells, facei)
             {
                 scalar maxFace = max(pif[facei], TPf[facei]);
-                
+
                 forAll(isoValues_, i)
                 {
                     const scalar iso_ = isoValues_[i];
-                    
+
                     if (maxFace >= iso_)
                     {
                         const vector& p = Cf[facei];
-                        
-                        vector p_rotated
+
+                        vector pRotated
                         (
                             p.x() * c + p.y() * s,
                             p.y() * c - p.x() * s,
                             p.z()
                         );
-                        
+
                         boundBoxes[i].min() =
-                            min(p_rotated, boundBoxes[i].min());
+                            min(pRotated, boundBoxes[i].min());
 
                         boundBoxes[i].max() =
-                            max(p_rotated, boundBoxes[i].max());
+                            max(pRotated, boundBoxes[i].max());
                     }
                 }
             }
         }
     }
-    
+
     forAll(isoValues_, i)
     {
         reduce(boundBoxes[i].min(), minOp<point>());
         reduce(boundBoxes[i].max(), maxOp<point>());
     }
-    
+
     // update the melt pool dimensions log files
     if (Pstream::master())
     {
         forAll(isoValues_, i)
         {
             vector dimensions = max(boundBoxes[i].span(), vector::zero);
-            
+
             OFstream& logFile = logFilePtrs_[i];
-                        
+
             logFile<< mesh_.time().value() << ","
                    << dimensions.x() << ","
                    << dimensions.y() << ","

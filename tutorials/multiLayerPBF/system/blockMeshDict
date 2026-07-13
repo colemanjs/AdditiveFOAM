@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     | Website:  https://openfoam.org
-    \\  /    A nd           | Version:  10
+    \\  /    A nd           | Version:  13
      \\/     M anipulation  |
 \*---------------------------------------------------------------------------*/
 FoamFile
@@ -70,6 +70,11 @@ boundary
             (1 5 4 0)
             (3 7 6 2)
         );
+    }
+    internalFaces
+    {
+        type internal;
+        faces ();
     }
 );
 

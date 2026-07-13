@@ -1,8 +1,8 @@
 //- Set solution controls for thermodynamic algorithm
-scalar nThermoCorr = 
+scalar nThermoCorr =
     pimple.dict().lookupOrDefault<scalar>("nThermoCorrectors", 20);
 
-scalar thermoTol = 
+scalar thermoTol =
     pimple.dict().lookupOrDefault<scalar>("thermoTolerance", 1e-6);
 
 dimensionedScalar Tmax
@@ -40,8 +40,8 @@ if (explicitSolve)
             mesh.magSf()
            *fvc::interpolate(kappa)
            *mesh.surfaceInterpolation::deltaCoeffs()
-        )()()
-       /(mesh.V()*rho.value()*Cp())
+        )
+       /(mesh.V()*rho*Cp)
        *runTime.deltaT()
     );
 

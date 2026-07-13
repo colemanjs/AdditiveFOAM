@@ -2,7 +2,7 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     | Website:  https://openfoam.org
-    \\  /    A nd           | Version:  10
+    \\  /    A nd           | Version:  13
      \\/     M anipulation  |
 \*---------------------------------------------------------------------------*/
 FoamFile
@@ -10,19 +10,13 @@ FoamFile
     version     2.0;
     format      ascii;
     class       dictionary;
-    object      heatSourceProperties;
+    object      heatSourceDict;
 }
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 sources (beam);
 
-/*---------------------------------------------------------------------------*\
-Citation:
-    G.L. Knapp, J. Coleman, M. Rolchigo, M. Stoyanov, A. Plotkowski,
-    Calibrating uncertain parameters in melt pool simulations of additive 
-    manufacturing (2023), https://doi.org/10.1016/j.commatsci.2022.11190.
-\*---------------------------------------------------------------------------*/
 beam
 {
     pathName            scanPath;    
@@ -41,6 +35,28 @@ beam
         k               2.0;
         dimensions      (85.0e-6 85.0e-6 30e-6);
         nPoints         (10 10 10);
+    }
+}
+
+refinementModel
+{
+    refinementModel         none;
+
+    //refinementModel         targetCellLoad;
+    
+    refinementTemperature   1000;
+
+    buffers
+    {
+        beam                (85.0e-6 85.0e-6 100e-6);
+    }
+
+    targetCellLoadCoeffs
+    {
+        targetCellsPerProc  5000;
+        nBufferVolumes      4;
+        maxSearchIter       10;
+        timeTolerance       1e-4;
     }
 }
 

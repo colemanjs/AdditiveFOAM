@@ -5,7 +5,7 @@
     \\  /    A nd           | Copyright (C) 2011-2022 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
-                Copyright (C) 2023 Oak Ridge National Laboratory                
+                Copyright (C) 2023-2026 Oak Ridge National Laboratory
 -------------------------------------------------------------------------------
 License
     This file is part of OpenFOAM.
@@ -40,8 +40,9 @@ SourceFiles
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-#include "fvCFD.H"
-#include "segment.H"
+#include <fstream>
+#include "fvc.H"
+#include "pathVector.H"
 #include "HashTable.H"
 #include "absorptionModel.H"
 #include "DynamicList.H"
@@ -59,38 +60,38 @@ class movingBeam
 private:
 
     // Private data
-    
+
         //- Name of beam
         const word& sourceName_;
-        
+
         //- Main moving heat source dictionary
         const dictionary& dict_;
-        
+
         //- Run time information
         const Time& runTime_;
-        
+
         //- Individual beam sub-dict
         const dictionary& beamDict_;
 
-        //- List of beam segments
-        DynamicList<segment> path_;
-        
+        //- List of beam pathVectors
+        DynamicList<pathVector> path_;
+
         //- Index of path
         label index_;
-        
+
         //- Position of beam
         vector position_;
-        
+
         //- Power of beam
         scalar power_;
-        
+
         //- End time of path
         scalar endTime_;
-        
+
         //- Time step used for heat source integration
         scalar deltaT_;
-        
-        //- Adjust solution time to hit path segment start times? (d = true)
+
+        //- Adjust solution time to hit path vector start times?
         bool hitPathIntervals_;
 
     // Static Data Members
@@ -102,7 +103,7 @@ public:
 
     //- Runtime type information
     TypeName("movingBeam");
-    
+
     // Declare run-time constructor selection table
     declareRunTimeSelectionTable
     (
@@ -126,10 +127,10 @@ public:
             const dictionary& dict,
             const Time& runTime
         );
-                
+
         //- Disallow default bitwise copy construction
         movingBeam(const movingBeam&);
-        
+
     // Selectors
 
         //- Return a reference to the selected phaseChange model
@@ -140,7 +141,10 @@ public:
             const Time& runTime
         )
         {
-            return autoPtr<movingBeam>(new movingBeam(sourceName, dict, runTime));
+            return autoPtr<movingBeam>
+            (
+                new movingBeam(sourceName, dict, runTime)
+            );
         }
 
     //- Destructor
@@ -148,7 +152,7 @@ public:
     {}
 
     // Member Functions
-    
+
         //- Return current position of the moving beam
         inline vector position() const
         {
@@ -160,26 +164,39 @@ public:
         {
             return power_;
         }
-        
-        scalar deltaT() const
+
+        //- Return time step for path
+        inline scalar deltaT() const
         {
             return deltaT_;
         }
 
-        //- Read the path file
-        void readPath();
-        
+        //- Return path end time
+        inline scalar endTime() const
+        {
+            return endTime_;
+        }
+
+        //- Return access to the scan path vectors
+        inline const DynamicList<pathVector>& path() const
+        {
+            return path_;
+        }
+
+         //- Returns the path index at the provided time
+        label getIndex(const scalar time) const;
+
         //- Returns true if the simulation time is less than path endTime
-        bool activePath();
-        
-        //- Move the beam to the provided time
-        void move(const scalar time);
-        
-        //- Returns the path index at the provided time
-        label findIndex(const scalar time);
+        bool activePath() const;
 
         //- Adjust solution time step to hit pathInterval
-        void adjustDeltaT(scalar& dt);
+        void adjustDeltaT(scalar& dt) const;
+
+        //- Move the beam to the provided time
+        void move(const scalar time);
+
+        //- Read the path file
+        void readPath();
 };
 
 
@@ -192,4 +209,3 @@ public:
 #endif
 
 // ************************************************************************* //
-

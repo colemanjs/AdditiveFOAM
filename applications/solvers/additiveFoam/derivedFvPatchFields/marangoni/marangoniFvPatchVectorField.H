@@ -5,7 +5,7 @@
     \\  /    A nd           | Copyright (C) 2011-2022 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
-                Copyright (C) 2023 Oak Ridge National Laboratory                
+                Copyright (C) 2023-2026 Oak Ridge National Laboratory
 -------------------------------------------------------------------------------
 License
     This file is part of OpenFOAM.
@@ -27,6 +27,9 @@ Class
     marangoniFvPatchVectorField
 
 Description
+    This boundary condition applies a Marangoni velocity condition.
+    dSigmadT can be specified on the boundary condition or read from
+    constant/transportProperties.
 
 SourceFiles
     marangoniFvPatchVectorField.C
@@ -45,7 +48,7 @@ namespace Foam
 {
 
 /*---------------------------------------------------------------------------*\
-                          Class marangoniFvPatchVectorField Declaration
+                  Class marangoniFvPatchVectorField Declaration
 \*---------------------------------------------------------------------------*/
 
 class marangoniFvPatchVectorField
@@ -123,13 +126,12 @@ public:
 
         // Mapping functions
 
-            //- Map (and resize as needed) from self given a mapping object
-            //  Used to update fields following mesh topology change
-            virtual void autoMap(const fvPatchFieldMapper&);
-
-            //- Reverse map the given fvPatchField onto this fvPatchField
-            //  Used to reconstruct fields
-            virtual void rmap(const fvPatchVectorField&, const labelList&);
+            //- Map the given fvPatchField onto this fvPatchField
+            virtual void map
+            (
+                const fvPatchVectorField&,
+                const fvPatchFieldMapper&
+            );
 
             //- Reset the fvPatchField to the given fvPatchField
             //  Used for mesh to mesh mapping

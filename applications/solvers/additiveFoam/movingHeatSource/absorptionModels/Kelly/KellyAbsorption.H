@@ -5,7 +5,7 @@
     \\  /    A nd           | Copyright (C) 2011-2022 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
-                Copyright (C) 2023 Oak Ridge National Laboratory                
+                Copyright (C) 2023 Oak Ridge National Laboratory
 -------------------------------------------------------------------------------
 License
     This file is part of OpenFOAM.
@@ -64,15 +64,18 @@ class Kelly
     public absorptionModel
 {
     // Private Data
-    
+
         //- Conical or cylindrical
         word geometry_;
 
-        //- Constant absorption scalar
+        //- Fresnel absorption of the liquid metal
         dimensionedScalar eta0_;
-        
-        //- Minimum absorption
+
+        //- Effective absorption in the conduction regime
         dimensionedScalar etaMin_;
+
+        //- Aspect ratio above which the Kelly multiple-reflection model is used
+        scalar aspectRatioSwitch_;
 
 public:
 

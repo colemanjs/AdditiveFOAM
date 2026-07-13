@@ -21,21 +21,23 @@ jobs:
        
     runs-on: ubuntu-latest
     container:
-      image: docker.io/openfoam/openfoam10-paraview510
+      image: microfluidica/openfoam:13
       options: --user root
     steps:
       - name: Checkout AdditiveFOAM
         uses: actions/checkout@v2
       - name: Build AdditiveFOAM
         run: |
-          . /opt/openfoam10/etc/bashrc
+          . /opt/openfoam13/etc/bashrc || true
+          . ./etc/bashrc
+          test -n "$WM_PROJECT_DIR"
           ./Allwmake
       - name: Test AdditiveFOAM
         run: |
-          . /opt/openfoam10/etc/bashrc
+          . /opt/openfoam13/etc/bashrc || true
+          . ./etc/bashrc
           cp -r tutorials/AMB2018-02-B userCase
           cd userCase
-          # FIXME: use built-in "additiveFoam" smaller case when created
           blockMesh
           decomposePar
           mpirun -n 6 --oversubscribe --allow-run-as-root additiveFoam -parallel

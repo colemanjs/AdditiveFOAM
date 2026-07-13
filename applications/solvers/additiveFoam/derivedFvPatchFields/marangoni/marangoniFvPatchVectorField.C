@@ -5,7 +5,7 @@
     \\  /    A nd           | Copyright (C) 2011-2022 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
-                Copyright (C) 2023 Oak Ridge National Laboratory                
+                Copyright (C) 2023-2026 Oak Ridge National Laboratory
 -------------------------------------------------------------------------------
 License
     This file is part of OpenFOAM.
@@ -33,6 +33,7 @@ License
 #include "volFields.H"
 #include "surfaceFields.H"
 #include "fvcGrad.H"
+#include "IOdictionary.H"
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
@@ -56,9 +57,32 @@ Foam::marangoniFvPatchVectorField::marangoniFvPatchVectorField
 )
 :
     transformFvPatchField<vector>(p, iF),
-    dSigmadT_(dict.lookup<scalar>("dSigmadT")),
+    dSigmadT_(0.0),
     Tmax_(dict.lookupOrDefault<scalar>("Tmax", GREAT))
 {
+    if (!dict.readIfPresent("dSigmadT", dSigmadT_))
+    {
+        const fvMesh& mesh = p.boundaryMesh().mesh();
+
+        bool found = false;
+
+        if (mesh.foundObject<IOdictionary>("transportProperties"))
+        {
+            const IOdictionary& transportProperties =
+                mesh.lookupObject<IOdictionary>("transportProperties");
+
+            found = transportProperties.readIfPresent("dSigmadT", dSigmadT_);
+        }
+
+        if (!found)
+        {
+            FatalIOErrorInFunction(dict)
+                << "Required entry dSigmadT is not specified in the boundary "
+                << "condition or in constant/transportProperties"
+                << exit(FatalIOError);
+        }
+    }
+
     evaluate();
 }
 
@@ -91,22 +115,13 @@ Foam::marangoniFvPatchVectorField::marangoniFvPatchVectorField
 
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
-void Foam::marangoniFvPatchVectorField::autoMap
+void Foam::marangoniFvPatchVectorField::map
 (
-    const fvPatchFieldMapper& m
+    const fvPatchVectorField& pvf,
+    const fvPatchFieldMapper& mapper
 )
 {
-    transformFvPatchVectorField::autoMap(m);
-}
-
-
-void Foam::marangoniFvPatchVectorField::rmap
-(
-    const fvPatchVectorField& ptf,
-    const labelList& addr
-)
-{
-    transformFvPatchVectorField::rmap(ptf, addr);
+    transformFvPatchVectorField::map(pvf, mapper);
 }
 
 
@@ -126,7 +141,7 @@ Foam::marangoniFvPatchVectorField::snGrad() const
     vectorField pif(this->patchInternalField());
 
     // calculate the temperature gradient on the patch
-    const volScalarField& T = 
+    const volScalarField& T =
         this->internalField().mesh().lookupObject<volScalarField>("T");
 
     const dimensionedScalar Tmax("Tmax", dimTemperature, Tmax_);

@@ -5,7 +5,7 @@
     \\  /    A nd           | Copyright (C) 2011-2022 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
-                Copyright (C) 2023 Oak Ridge National Laboratory                
+                Copyright (C) 2023 Oak Ridge National Laboratory
 -------------------------------------------------------------------------------
 License
     This file is part of OpenFOAM.
@@ -35,7 +35,12 @@ namespace Foam
 namespace heatSourceModels
 {
     defineTypeNameAndDebug(modifiedSuperGaussian, 0);
-    addToRunTimeSelectionTable(heatSourceModel, modifiedSuperGaussian, dictionary);
+    addToRunTimeSelectionTable
+    (
+        heatSourceModel,
+        modifiedSuperGaussian,
+        dictionary
+    );
 }
 }
 
@@ -67,9 +72,11 @@ Foam::heatSourceModels::modifiedSuperGaussian::weight(const vector& d)
 
     vector s = cmptDivide(dimensions_, vector(a, a, 1.0));
 
-    if (d.z() < s.z())
+    const scalar z = mag(d.z());
+
+    if (z < s.z())
     {
-        s *= Foam::pow(1.0 - Foam::pow(d.z() / s.z(), m_), 1.0/m_);
+        s *= Foam::pow(1.0 - Foam::pow(z / s.z(), m_), 1.0/m_);
 
         vector di = vector(d.x(), d.y(), 0.0);
 

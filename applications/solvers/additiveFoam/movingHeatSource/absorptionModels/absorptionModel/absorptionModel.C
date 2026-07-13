@@ -5,7 +5,7 @@
     \\  /    A nd           | Copyright (C) 2011-2022 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
-                Copyright (C) 2023 Oak Ridge National Laboratory                
+                Copyright (C) 2023 Oak Ridge National Laboratory
 -------------------------------------------------------------------------------
 License
     This file is part of OpenFOAM.
@@ -52,7 +52,7 @@ Foam::IOobject Foam::absorptionModel::createIOobject
     typeIOobject<IOdictionary> io
     (
         dict.name(),
-        mesh.time().timeName(),
+        mesh.time().name(),
         mesh.thisDb(),
         IOobject::MUST_READ,
         IOobject::NO_WRITE
@@ -84,7 +84,7 @@ Foam::absorptionModel::absorptionModel
     sourceName_(sourceName),
     heatSourceDict_(dict),
     mesh_(mesh),
-    
+
     beamDict_(heatSourceDict_.optionalSubDict(sourceName_)),
     absorptionModelCoeffs_(beamDict_.optionalSubDict(type + "Coeffs"))
 {}

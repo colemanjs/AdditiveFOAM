@@ -5,7 +5,7 @@
     \\  /    A nd           | Copyright (C) 2011-2022 OpenFOAM Foundation
      \\/     M anipulation  |
 -------------------------------------------------------------------------------
-                Copyright (C) 2023 Oak Ridge National Laboratory                
+                Copyright (C) 2023 Oak Ridge National Laboratory
 -------------------------------------------------------------------------------
 License
     This file is part of OpenFOAM.
@@ -51,7 +51,15 @@ Foam::absorptionModels::Kelly::Kelly
     absorptionModel(typeName, sourceName, dict, mesh),
     geometry_(absorptionModelCoeffs_.lookup<word>("geometry")),
     eta0_("eta0", dimless, absorptionModelCoeffs_),
-    etaMin_("etaMin", dimless, absorptionModelCoeffs_)
+    etaMin_("etaMin", dimless, absorptionModelCoeffs_),
+    aspectRatioSwitch_
+    (
+        absorptionModelCoeffs_.lookupOrDefault<scalar>
+        (
+            "aspectRatioSwitch",
+            1.0
+        )
+    )
 {
     if ((geometry_ != "cone") && (geometry_ != "cylinder"))
     {
@@ -64,32 +72,32 @@ Foam::absorptionModels::Kelly::Kelly
 
 // * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * * //
 
-Foam::scalar 
+Foam::scalar
 Foam::absorptionModels::Kelly::eta
 (
     const scalar& aspectRatio
 ) const
 {
-    if (aspectRatio > 1.0)
+    if (aspectRatio > aspectRatioSwitch_)
     {
         const scalar theta = Foam::atan(1.0 / aspectRatio);
-        
+
         scalar F = 0.0;
         scalar G = 0.0;
-        
+
         if (geometry_ == "cone")
         {
             F = 0.25 * (3.0 * Foam::sin(theta) - Foam::sin(3.0 * theta));
             G = 1.0 / (1.0 + Foam::sqrt(1.0 + pow(aspectRatio, 2)));
         }
-        
+
         else if (geometry_ == "cylinder")
         {
             F = 0.5 * (1.0 - Foam::cos(2.0 * theta));
             G = 0.5 / (1.0 + aspectRatio);
         }
-        
-        return (eta0_ * (1.0 + (1.0 - eta0_)*(G - F)) 
+
+        return (eta0_ * (1.0 + (1.0 - eta0_)*(G - F))
                 / (1.0 - (1.0 - eta0_)*(1.0 - G))).value();
     }
     else
@@ -108,6 +116,12 @@ bool Foam::absorptionModels::Kelly::read()
         absorptionModelCoeffs_.lookup("geometry") >> geometry_;
         absorptionModelCoeffs_.lookup("eta0") >> eta0_;
         absorptionModelCoeffs_.lookup("etaMin") >> etaMin_;
+        aspectRatioSwitch_ =
+            absorptionModelCoeffs_.lookupOrDefault<scalar>
+            (
+                "aspectRatioSwitch",
+                1.0
+            );
 
         return true;
     }

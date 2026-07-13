@@ -1,10 +1,30 @@
+Info<< "Reading transportProperties\n" << endl;
+#include "readTransportProperties.H"
+
+Info<< "Reading thermoPath\n" << endl;
+thermoPath thermo(transportProperties, runTime);
+
+dimensionedScalar liquidus
+(
+    "liquidus",
+    dimTemperature,
+    thermo.liquidus()
+);
+
+dimensionedScalar solidus
+(
+    "solidus",
+    dimTemperature,
+    thermo.solidus()
+);
+
 Info<< "Reading field T\n" << endl;
 volScalarField T
 (
     IOobject
     (
         "T",
-        runTime.timeName(),
+        runTime.name(),
         mesh,
         IOobject::MUST_READ,
         IOobject::AUTO_WRITE
@@ -18,7 +38,7 @@ volScalarField alpha3
     IOobject
     (
         IOobject::groupName("alpha", "powder"),
-        runTime.timeName(),
+        runTime.name(),
         mesh,
         IOobject::READ_IF_PRESENT,
         IOobject::AUTO_WRITE
@@ -33,7 +53,7 @@ volScalarField alpha1
     IOobject
     (
         IOobject::groupName("alpha", "solid"),
-        runTime.timeName(),
+        runTime.name(),
         mesh,
         IOobject::NO_READ,
         IOobject::NO_WRITE
@@ -43,50 +63,21 @@ volScalarField alpha1
     zeroGradientFvPatchScalarField::typeName
 );
 
-IFstream thermoFile
-(
-    runTime.rootPath()/runTime.globalCaseName()/runTime.constant()/"thermoPath"
-);
-
-graph thermo
-(
-    "thermo",
-    "T",
-    "alpha1",
-    thermoFile
-);
-
-dimensionedScalar Tliq
-(
-    "Tliq",
-    dimTemperature,
-    interpolateXY(0.0, thermo.y(), thermo.x())
-);
-
-dimensionedScalar Tsol
-(
-    "Tsol",
-    dimTemperature,
-    interpolateXY(1.0, thermo.y(), thermo.x())
-);
-
 // set solid fraction field consistent with temperature
-forAll(mesh.cells(), cellI)
+forAll(mesh.cells(), celli)
 {
-    scalar alpha1_ = interpolateXY(T[cellI], thermo.x(), thermo.y());
-    alpha1[cellI] = min(max(alpha1_, 0.0), 1.0);
+    scalar alpha1_ = interpolateXY(T[celli], thermo.x(), thermo.y());
+    alpha1[celli] = min(max(alpha1_, 0.0), 1.0);
 }
 
 alpha1.correctBoundaryConditions();
-
-#include "readTransportProperties.H"
 
 volScalarField Cp
 (
     IOobject
     (
         "Cp",
-        runTime.timeName(),
+        runTime.name(),
         mesh,
         IOobject::NO_READ,
         IOobject::NO_WRITE
@@ -101,7 +92,7 @@ volScalarField kappa
     IOobject
     (
         "kappa",
-        runTime.timeName(),
+        runTime.name(),
         mesh
     ),
     mesh,
@@ -117,7 +108,7 @@ volScalarField p_rgh
     IOobject
     (
         "p_rgh",
-        runTime.timeName(),
+        runTime.name(),
         mesh,
         IOobject::READ_IF_PRESENT,
         IOobject::NO_WRITE
@@ -132,7 +123,7 @@ volVectorField U
     IOobject
     (
         "U",
-        runTime.timeName(),
+        runTime.name(),
         mesh,
         IOobject::READ_IF_PRESENT,
         IOobject::AUTO_WRITE
@@ -148,22 +139,37 @@ volScalarField rhok
     IOobject
     (
         "rhok",
-        runTime.timeName(),
+        runTime.name(),
         mesh
     ),
-    1.0 - beta*(T - Tliq)
+    1.0 - beta*(T - liquidus)
 );
 
 #include "readGravitationalAcceleration.H"
-#include "readhRef.H"
-#include "gh.H"
+
+uniformDimensionedScalarField hRef
+(
+    IOobject
+    (
+        "hRef",
+        runTime.constant(),
+        mesh,
+        IOobject::READ_IF_PRESENT,
+        IOobject::NO_WRITE
+    ),
+    dimensionedScalar(dimLength, 0)
+);
+
+dimensionedScalar ghRef(-mag(g)*hRef);
+volScalarField gh("gh", (g & mesh.C()) - ghRef);
+surfaceScalarField ghf("ghf", (g & mesh.Cf()) - ghRef);
 
 volScalarField p
 (
     IOobject
     (
         "p",
-        runTime.timeName(),
+        runTime.name(),
         mesh,
         IOobject::NO_READ,
         IOobject::NO_WRITE
@@ -171,15 +177,12 @@ volScalarField p
     p_rgh + rhok*gh
 );
 
-label pRefCell = 0;
-scalar pRefValue = 0.0;
-setRefCell
+// Create pressure reference
+Foam::pressureReference pressureReference
 (
     p,
     p_rgh,
-    pimple.dict(),
-    pRefCell,
-    pRefValue
+    pimple.dict()
 );
 
 if (p_rgh.needReference())
@@ -188,10 +191,32 @@ if (p_rgh.needReference())
     (
         "p",
         p.dimensions(),
-        pRefValue - getRefCellValue(p, pRefCell)
+        pressureReference.refValue()
+      - getRefCellValue(p, pressureReference.refCell())
     );
+
+    p_rgh = p - rhok*gh;
 }
 
 mesh.schemes().setFluxRequired(p_rgh.name());
 
 #include "createMRF.H"
+
+autoPtr<surfaceVectorField> Uf;
+if (mesh.dynamic() || MRF.size())
+{
+    U.correctBoundaryConditions();
+
+    Uf = new surfaceVectorField
+    (
+        IOobject
+        (
+            "Uf",
+            runTime.name(),
+            mesh,
+            IOobject::READ_IF_PRESENT,
+            IOobject::AUTO_WRITE
+        ),
+        fvc::interpolate(U)
+    );
+}
