@@ -64,6 +64,22 @@ def _create_data_fingerprint(data_list: list) -> str:
     return hashlib.sha256(sorted_data_str.encode()).hexdigest()
 
 
+def spot_size_2sigma_metres(params: dict) -> float:
+    try:
+        spot_size_d4sigma_microns = float(params["Spot_Size_microns"])
+    except (KeyError, TypeError, ValueError) as error:
+        raise ValueError(
+            "Each experiment requires a numeric Spot_Size_microns value"
+        ) from error
+
+    if not math.isfinite(spot_size_d4sigma_microns):
+        raise ValueError("Spot_Size_microns must be finite")
+    if spot_size_d4sigma_microns <= 0.0:
+        raise ValueError("Spot_Size_microns must be greater than zero")
+
+    return 0.5e-6 * spot_size_d4sigma_microns
+
+
 def load_yaml_file(filepath: str):
     if not os.path.exists(filepath):
         return []
@@ -209,7 +225,8 @@ def parse_experiments(raw_experiments: list) -> pd.DataFrame:
     records = []
     for exp in raw_experiments:
         params = exp["parameters"]
-        spot_size = params.get("Spot_Size_microns")
+        spot_size_2sigma_metres(params)
+        spot_size = float(params["Spot_Size_microns"])
         depths = exp["Measured_Depth_microns"]
         # The projected-source closure uses depth relative to lateral spot size.
         normalized_depths = [float(d) / float(spot_size) for d in depths]
@@ -355,7 +372,10 @@ def validate_template_case(template_case: Path, calibration_token: str):
         raise ValueError("Template case is missing: " + ", ".join(missing))
 
     placeholder_locations = {
-        "constant/heatSourceDict": [calibration_token],
+        "constant/heatSourceDict": [
+            calibration_token,
+            "spotSize2Sigma",
+        ],
         "constant/scanPath": ["power", "velocity"],
         "system/controlDict": ["endTime", "writeInterval"],
     }
@@ -593,10 +613,12 @@ def run_one_additivefoam_simulation(
     shutil.copytree(template_case, case_dir)
 
     velocity_m_s = float(params["Speed_mm_s"]) * 1e-3
+    spot_size_2sigma_m = spot_size_2sigma_metres(params)
     values = {
         config["calibration_token"]: float(B),
         "power": float(params["Power_W"]),
         "velocity": velocity_m_s,
+        "spotSize2Sigma": spot_size_2sigma_m,
     }
 
     # Render the scan first because its geometry and velocity determine endTime.
@@ -632,6 +654,7 @@ def run_one_additivefoam_simulation(
             "B": float(B),
             "power": float(params["Power_W"]),
             "velocity": velocity_m_s,
+            "spot_size_2sigma_m": spot_size_2sigma_m,
             "endTime": end_time,
             "writeInterval": end_time,
         }

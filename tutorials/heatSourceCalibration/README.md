@@ -84,25 +84,27 @@ the temperature paired with `alpha.solid = 0`, and reads the matching file from
 `postProcessing/meltPoolDimensions`. The SS316L liquidus is therefore not
 duplicated in `config.yml`, `heatSourceDict`, or `controlDict`.
 
-## Shared projected-source parameter
+## Rendered projected-source parameters
 
-The template exposes the trial value once in `constant/heatSourceDict`:
+The template exposes the lateral source dimension once in
+`constant/heatSourceDict`:
 
 ```foam
-calibrationA 0.0;
-calibrationB <<B>>;
+spotSize2Sigma <<spotSize2Sigma>>;
 ```
 
-The template references these aliases directly from the projected Gaussian
-coefficients:
+The projected Gaussian coefficients use that value for both lateral dimensions
+and render the trial value directly:
 
 ```foam
 projectedGaussianCoeffs
 {
-    dimensions (54.845e-6 54.845e-6 5.0e-5);
-    A $calibrationA;
-    B $calibrationB;
+    dimensions ($spotSize2Sigma $spotSize2Sigma 30.0e-6);
+    A 0.0;
+    B <<B>>;
 }
 ```
 
-Power, speed, end time, and write interval are rendered independently.
+For each experiment, `spotSize2Sigma` is half of `Spot_Size_microns` and is
+converted from microns to metres. Power, speed, end time, and write interval
+are also rendered for each case.

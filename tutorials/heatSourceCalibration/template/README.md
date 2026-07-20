@@ -16,13 +16,17 @@ Allclean
 
 The required renderer placeholders are:
 
-- `constant/heatSourceDict`: `<<B>>`, exposed once as `calibrationB`
+- `constant/heatSourceDict`: `<<B>>` and `<<spotSize2Sigma>>`
 - `constant/scanPath`: `<<power>>`, `<<velocity>>`
 - `system/controlDict`: `<<endTime>>`, `<<writeInterval>>`
 
-OpenFOAM dictionary aliases propagate `$calibrationB` into the projected
-Gaussian closure. A template for another projected source can use the same
-alias for every applicable `B` coefficient.
+The projected Gaussian closure reads `<<B>>` directly. The
+`$spotSize2Sigma` alias supplies both lateral dimensions from one rendered
+value.
+
+The calibration command converts `Spot_Size_microns` from the measured D4sigma
+diameter to a 2sigma radius in metres and assigns it to both lateral source
+dimensions.
 
 The SS316L material configuration supplies `thermoPath`, emissivity, and the
 Marangoni coefficient. Transient source depth and `meltPoolDimensions` obtain

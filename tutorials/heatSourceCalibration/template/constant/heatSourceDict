@@ -16,6 +16,8 @@ FoamFile
 
 sources (beam);
 
+spotSize2Sigma <<spotSize2Sigma>>;
+
 beam
 {
     pathName            scanPath;
@@ -34,7 +36,7 @@ beam
 
     projectedGaussianCoeffs
     {
-        dimensions      (54.845e-6 54.845e-6 30.0e-6);
+        dimensions      ($spotSize2Sigma $spotSize2Sigma 30.0e-6);
         A               0.0;
         B               <<B>>;
 
