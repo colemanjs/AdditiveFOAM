@@ -23,11 +23,13 @@ cp -r "$ADDITIVEFOAM_TUTORIALS/heatSourceCalibration" \
 cd "$FOAM_RUN/AdditiveFOAM/heatSourceCalibration"
 ```
 
-The repository installation creates the Python environment at
-`$ADDITIVEFOAM_PROJECT_DIR/.venv`. It is activated by the AdditiveFOAM
-environment:
+Install the Python dependencies into the environment you intend to use before
+running the calibration:
 
 ```bash
+python -m pip install \
+    -r "$ADDITIVEFOAM_PROJECT_DIR/requirements.txt"
+python -m pip check
 calibrateHeatSource --help
 ```
 
@@ -37,8 +39,8 @@ cases and reports beneath the tutorial directory.
 ## Run the calibration
 
 Review `system/decomposeParDict` in the template before starting. The supplied
-research configuration requests 6 MPI ranks for each CFD case, evaluates ten
-trial values for each of five experiments, and uses 2,000 posterior draws.
+configuration uses 8 MPI ranks for each AdditiveFOAM case, evaluates ten trial
+values for each of five experiments, and uses 2,000 posterior draws.
 
 ```bash
 calibrateHeatSource --config config.yml

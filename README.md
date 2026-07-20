@@ -42,21 +42,30 @@ script from the repository root:
 
 ```sh
 ./Allwmake
-source etc/bashrc
 ```
 
-The second `source` activates the newly created Python environment. The master
-build script uses Python 3.10 or newer to create `.venv` and install
-the dependencies in `requirements.txt`. If Python is unavailable, the compiled
-applications are still built and `Allwmake` prints a warning.
+The Python utilities require Python 3.10 or newer. To use a dedicated virtual
+environment, create it and install the pinned dependencies from the repository
+root:
 
 ```sh
+python3 -m venv .venv
+. .venv/bin/activate
+python -m pip install -r requirements.txt
+python -m pip check
 calibrateHeatSource --help
 ```
 
-For regular use, source both environments in each new shell or add them to your
-shell startup file. The AdditiveFOAM environment activates `.venv` when it is
-available:
+To use an existing Python environment instead, activate that environment and
+install the same requirements into it:
+
+```sh
+python -m pip install -r /path/to/AdditiveFOAM/requirements.txt
+python -m pip check
+```
+
+The AdditiveFOAM environment does not create or activate a Python environment.
+Source the OpenFOAM and AdditiveFOAM environments in each new shell:
 
 ```sh
 source /path/to/OpenFOAM-14/etc/bashrc
