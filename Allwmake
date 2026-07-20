@@ -27,3 +27,57 @@ $ADDITIVEFOAM_BUILD_FLAGS \
 applications/Allwmake $targetType $*
 
 #------------------------------------------------------------------------------
+# Build the Python environment
+
+pythonCommand=
+
+if command -v python3 >/dev/null 2>&1
+then
+    pythonCommand=python3
+elif command -v python >/dev/null 2>&1 && \
+    python -c 'import sys; raise SystemExit(sys.version_info.major != 3)'
+then
+    pythonCommand=python
+fi
+
+if [ -z "$pythonCommand" ]
+then
+    echo "WARNING: Python 3 was not found; skipping the Python environment." >&2
+elif ! "$pythonCommand" -c \
+    'import sys; raise SystemExit(sys.version_info < (3, 10))'
+then
+    echo "WARNING: Python 3.10 or newer is required; skipping the Python environment." >&2
+elif [ ! -f "$ADDITIVEFOAM_PROJECT_DIR/requirements.txt" ]
+then
+    echo "WARNING: requirements.txt was not found; skipping the Python environment." >&2
+else
+    additivefoamVenv="$ADDITIVEFOAM_PROJECT_DIR/.venv"
+
+    if [ ! -x "$additivefoamVenv/bin/python" ] || \
+       [ ! -r "$additivefoamVenv/bin/activate" ]
+    then
+        echo "Creating the AdditiveFOAM Python environment"
+        "$pythonCommand" -m venv "$additivefoamVenv" || exit 1
+    fi
+
+    if ! "$additivefoamVenv/bin/python" -c \
+        'import sys; raise SystemExit(sys.version_info < (3, 10))'
+    then
+        echo "ERROR: $additivefoamVenv uses Python older than 3.10." >&2
+        echo "       Remove .venv and run Allwmake again." >&2
+        exit 1
+    fi
+
+    echo "Installing AdditiveFOAM Python dependencies"
+    "$additivefoamVenv/bin/python" -m pip install \
+        -r "$ADDITIVEFOAM_PROJECT_DIR/requirements.txt" || exit 1
+    "$additivefoamVenv/bin/python" -m pip check || exit 1
+
+    echo "Source $ADDITIVEFOAM_PROJECT_DIR/etc/bashrc to activate the environment"
+
+    unset additivefoamVenv
+fi
+
+unset pythonCommand
+
+#------------------------------------------------------------------------------

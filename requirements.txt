@@ -1,0 +1,10 @@
+arviz>=0.20,<0.23
+matplotlib
+numpy
+pandas
+pymc
+pytensor
+PyYAML
+reportlab
+scipy
+seaborn

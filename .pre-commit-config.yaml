@@ -2,27 +2,45 @@ minimum_pre_commit_version: "3.7.0"
 
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v6.0.0
+    rev: v3.4.0
     hooks:
       - id: trailing-whitespace
-        files: &openfoam_cpp_files '\.(C|H|I|cc|cpp|cxx|hh|hpp|hxx)$'
-        exclude: &openfoam_excludes '(^|/)(lnInclude|ThirdParty|platforms|build|processor[0-9]+|postProcessing)/'
+        files: &python_files '(\.pyi?$|(^|/)bin/calibrateHeatSource$)'
 
       - id: end-of-file-fixer
-        files: *openfoam_cpp_files
-        exclude: *openfoam_excludes
+        files: *python_files
 
       - id: mixed-line-ending
         args: [--fix=lf]
-        files: *openfoam_cpp_files
-        exclude: *openfoam_excludes
+        files: &openfoam_cpp_files '\.(C|H|I|cc|cpp|cxx|hh|hpp|hxx)$'
+        exclude: &openfoam_excludes '(^|/)(lnInclude|ThirdParty|platforms|build|processor[0-9]+|postProcessing)/'
 
       - id: check-merge-conflict
 
       - id: check-yaml
 
+  - repo: https://github.com/psf/black
+    rev: 24.3.0
+    hooks:
+      - id: black
+        args: [--line-length=80]
+        files: *python_files
+
+  - repo: https://github.com/codespell-project/codespell
+    rev: v2.2.6
+    hooks:
+      - id: codespell
+        args: ["-L", "mater,nd,coefficent,ot"]
+        files: *python_files
+
   - repo: local
     hooks:
+      - id: python-max-80-columns
+        name: "Python style: max 80 characters"
+        language: pygrep
+        entry: '^.{81,}$'
+        files: *python_files
+
       - id: openfoam-no-tabs
         name: "OpenFOAM style: no tabs"
         language: pygrep

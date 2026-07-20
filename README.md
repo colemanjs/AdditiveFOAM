@@ -13,6 +13,8 @@ The documentation for `AdditiveFOAM` is hosted on [GitHub Pages](https://ornl.gi
 |-----------------------------------------------------------|------------------------------------------|
 | [solver](applications/solvers/additiveFoam)               | Development version of the solver        |
 | [tutorials](tutorials)                                     | Tutorial cases |
+| [calibration utility](bin/calibrateHeatSource)             | Heat-source calibration command |
+| [calibration tutorial](tutorials/heatSourceCalibration)    | Projected heat-source calibration workflow |
 
 ## Installation
 [![OpenFOAM-14](https://img.shields.io/badge/OpenFOAM-14-blue.svg)](https://github.com/OpenFOAM/OpenFOAM-14)
@@ -40,10 +42,21 @@ script from the repository root:
 
 ```sh
 ./Allwmake
+source etc/bashrc
+```
+
+The second `source` activates the newly created Python environment. The master
+build script uses Python 3.10 or newer to create `.venv` and install
+the dependencies in `requirements.txt`. If Python is unavailable, the compiled
+applications are still built and `Allwmake` prints a warning.
+
+```sh
+calibrateHeatSource --help
 ```
 
 For regular use, source both environments in each new shell or add them to your
-shell startup file:
+shell startup file. The AdditiveFOAM environment activates `.venv` when it is
+available:
 
 ```sh
 source /path/to/OpenFOAM-14/etc/bashrc
