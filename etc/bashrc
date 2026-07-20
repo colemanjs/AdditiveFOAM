@@ -77,26 +77,6 @@ if [ -d "$ADDITIVEFOAM_PROJECT_DIR/bin" ]; then
 fi
 
 
-# AdditiveFOAM Python environment
-additivefoamVenv="$ADDITIVEFOAM_PROJECT_DIR/.venv"
-
-if [ -d "$additivefoamVenv" ]
-then
-    if [ ! -x "$additivefoamVenv/bin/python" ] || \
-       [ ! -r "$additivefoamVenv/bin/activate" ]
-    then
-        echo "WARNING: The AdditiveFOAM Python environment is incomplete." >&2
-        echo "         Run $ADDITIVEFOAM_PROJECT_DIR/Allwmake to rebuild it." >&2
-    elif [ "${VIRTUAL_ENV:-}" != "$additivefoamVenv" ]
-    then
-        . "$additivefoamVenv/bin/activate" || \
-            echo "WARNING: Unable to activate $additivefoamVenv." >&2
-    fi
-fi
-
-unset additivefoamVenv
-
-
 # AdditiveFOAM directories
 export ADDITIVEFOAM_TUTORIALS="$ADDITIVEFOAM_PROJECT_DIR/tutorials"
 export ADDITIVEFOAM_APPLICATIONS="$ADDITIVEFOAM_PROJECT_DIR/applications"
