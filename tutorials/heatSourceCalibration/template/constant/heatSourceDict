@@ -16,7 +16,7 @@ FoamFile
 
 sources (beam);
 
-spotSize2Sigma <<spotSize2Sigma>>;
+heatSourceRadius <<heatSourceRadius>>;
 
 beam
 {
@@ -36,7 +36,7 @@ beam
 
     projectedGaussianCoeffs
     {
-        dimensions      ($spotSize2Sigma $spotSize2Sigma 30.0e-6);
+        dimensions      ($heatSourceRadius $heatSourceRadius 30.0e-6);
         A               0.0;
         B               <<B>>;
 

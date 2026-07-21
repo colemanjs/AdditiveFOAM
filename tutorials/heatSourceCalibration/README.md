@@ -2,8 +2,8 @@
 
 This tutorial calibrates the projected depth-distribution closure used by
 AdditiveFOAM heat sources. The supplied worked example uses a
-`projectedGaussian` source with SS316L. The laser spot size (D4sigma) was
-measured to be 109.69 microns.
+`projectedGaussian` source with SS316L. The laser D4sigma diameter was measured
+to be 109.69 microns, giving a 2sigma heat-source radius of 54.845 microns.
 
 ## Installation and setup
 
@@ -90,7 +90,7 @@ The template exposes the lateral source dimension once in
 `constant/heatSourceDict`:
 
 ```foam
-spotSize2Sigma <<spotSize2Sigma>>;
+heatSourceRadius <<heatSourceRadius>>;
 ```
 
 The projected Gaussian coefficients use that value for both lateral dimensions
@@ -99,12 +99,16 @@ and render the trial value directly:
 ```foam
 projectedGaussianCoeffs
 {
-    dimensions ($spotSize2Sigma $spotSize2Sigma 30.0e-6);
+    dimensions ($heatSourceRadius $heatSourceRadius 30.0e-6);
     A 0.0;
     B <<B>>;
 }
 ```
 
-For each experiment, `spotSize2Sigma` is half of `Spot_Size_microns` and is
-converted from microns to metres. Power, speed, end time, and write interval
-are also rendered for each case.
+For each experiment, `Spot_Size_microns` is the measured D4sigma diameter. The
+calibration command divides it by two to obtain the heat-source radius, then
+uses that radius for both lateral source dimensions and to normalize measured
+and simulated depth. The calibration coordinate is therefore
+`d / (D4sigma / 2)`, matching `d / min(dimensions.x(), dimensions.y())` in the
+heat-source models. Power, speed, end time, and write interval are also
+rendered for each case.

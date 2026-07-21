@@ -6,7 +6,7 @@ For each experimental condition, the routine builds a response curve from CFD
 results obtained with A = 0 and trial values of B. It infers a local n from the
 measured melt-pool depths, then fits the production relation
 
-    n = clip(A * log2(depth / spot_size) + B, 0, 9)
+    n = clip(A * log2(depth / heat_source_radius) + B, 0, 9)
 
 Local posterior uncertainty is used in both the global fit and its uncertainty
 band. Simulation results and calibration state are cached by process condition.
@@ -64,7 +64,7 @@ def _create_data_fingerprint(data_list: list) -> str:
     return hashlib.sha256(sorted_data_str.encode()).hexdigest()
 
 
-def spot_size_2sigma_metres(params: dict) -> float:
+def heat_source_radius_microns(params: dict) -> float:
     try:
         spot_size_d4sigma_microns = float(params["Spot_Size_microns"])
     except (KeyError, TypeError, ValueError) as error:
@@ -77,7 +77,7 @@ def spot_size_2sigma_metres(params: dict) -> float:
     if spot_size_d4sigma_microns <= 0.0:
         raise ValueError("Spot_Size_microns must be greater than zero")
 
-    return 0.5e-6 * spot_size_d4sigma_microns
+    return 0.5 * spot_size_d4sigma_microns
 
 
 def load_yaml_file(filepath: str):
@@ -225,11 +225,9 @@ def parse_experiments(raw_experiments: list) -> pd.DataFrame:
     records = []
     for exp in raw_experiments:
         params = exp["parameters"]
-        spot_size_2sigma_metres(params)
-        spot_size = float(params["Spot_Size_microns"])
+        heat_source_radius = heat_source_radius_microns(params)
         depths = exp["Measured_Depth_microns"]
-        # The projected-source closure uses depth relative to lateral spot size.
-        normalized_depths = [float(d) / float(spot_size) for d in depths]
+        normalized_depths = [float(d) / heat_source_radius for d in depths]
 
         records.append(
             {
@@ -251,7 +249,7 @@ def parse_simulations(raw_simulations: list) -> pd.DataFrame:
         params = sim_run["parameters"]
         n_values = sim_run["n"]
         depths = sim_run["Simulated_Depth_microns"]
-        spot_size = params.get("Spot_Size_microns")
+        heat_source_radius = heat_source_radius_microns(params)
 
         for n, depth in zip(n_values, depths):
             records.append(
@@ -260,7 +258,7 @@ def parse_simulations(raw_simulations: list) -> pd.DataFrame:
                     "n": float(n),
                     "Simulated_Depth_microns": float(depth),
                     "Normalized_Simulated_Depth": float(depth)
-                    / float(spot_size),
+                    / heat_source_radius,
                 }
             )
     return pd.DataFrame(records)
@@ -374,7 +372,7 @@ def validate_template_case(template_case: Path, calibration_token: str):
     placeholder_locations = {
         "constant/heatSourceDict": [
             calibration_token,
-            "spotSize2Sigma",
+            "heatSourceRadius",
         ],
         "constant/scanPath": ["power", "velocity"],
         "system/controlDict": ["endTime", "writeInterval"],
@@ -613,12 +611,12 @@ def run_one_additivefoam_simulation(
     shutil.copytree(template_case, case_dir)
 
     velocity_m_s = float(params["Speed_mm_s"]) * 1e-3
-    spot_size_2sigma_m = spot_size_2sigma_metres(params)
+    heat_source_radius_m = heat_source_radius_microns(params) * 1.0e-6
     values = {
         config["calibration_token"]: float(B),
         "power": float(params["Power_W"]),
         "velocity": velocity_m_s,
-        "spotSize2Sigma": spot_size_2sigma_m,
+        "heatSourceRadius": heat_source_radius_m,
     }
 
     # Render the scan first because its geometry and velocity determine endTime.
@@ -654,7 +652,7 @@ def run_one_additivefoam_simulation(
             "B": float(B),
             "power": float(params["Power_W"]),
             "velocity": velocity_m_s,
-            "spot_size_2sigma_m": spot_size_2sigma_m,
+            "heat_source_radius_m": heat_source_radius_m,
             "endTime": end_time,
             "writeInterval": end_time,
         }
@@ -1209,7 +1207,7 @@ def plot_calibration_overview_pages(
             )
 
             ax.set_xlabel("B used in A=0 local calibration")
-            ax.set_ylabel("Depth / spot size")
+            ax.set_ylabel("d / (D4sigma / 2)")
             ax.margins(x=0.08, y=0.12)
 
             ax.legend(
@@ -1572,8 +1570,8 @@ def plot_final_fit(
     """
     Plot the fitted projected-source response and its uncertainty.
 
-    ``x_obs`` is measured depth divided by spot size. Values below one are
-    valid.
+    ``x_obs`` is measured depth divided by half the D4sigma spot size. Values
+    below one are valid.
     The curve and interval use n = clip(A * log2(x) + B, 0, 9).
     """
     with report_plot_context():
@@ -1674,7 +1672,7 @@ def plot_final_fit(
 
         ax.set_xscale("log", base=2)
         ax.set_title("AdditiveFOAM Calibration Fit")
-        ax.set_xlabel("x = measured depth / spot size")
+        ax.set_xlabel("x = d / (D4sigma / 2)")
         ax.set_ylabel("Shape factor n")
         ax.margins(x=0.04, y=0.12)
 
@@ -1702,8 +1700,9 @@ def fit_and_plot_heteroskedastic_model(
 
         n = clip(A * log2(x) + B, 0, 9)
 
-    where x is measured depth divided by spot size. The reported 95% response
-    interval is propagated from the local calibration uncertainty.
+    where x is measured depth divided by half the D4sigma spot size. The
+    reported 95% response interval is propagated from the local calibration
+    uncertainty.
     """
     if calibrated_results_df.empty or len(calibrated_results_df) < 2:
         return None, None
@@ -1833,6 +1832,7 @@ def fit_and_plot_heteroskedastic_model(
         "x_min": x_min,
         "x_max": x_max,
         "x_log_floor": float(x_log_floor),
+        "x_definition": "d / (D4sigma / 2)",
         "n_raw_at_x_min": float(n_raw_at_x_min),
         "n_raw_at_x_max": float(n_raw_at_x_max),
         "n_applied_at_x_min": float(np.clip(n_raw_at_x_min, 0.0, 9.0)),
@@ -1971,7 +1971,7 @@ def save_summary_table(results_df: pd.DataFrame, filepath: Path):
             {
                 **params,
                 "mean_depth_microns": row["mean_depth_microns"],
-                "x_depth_over_spot_size": row["mean_x"],
+                "x_depth_over_half_d4sigma": row["mean_x"],
                 "calibrated_n": row["calibrated_n"],
                 "calibrated_n_mode": row.get(
                     "calibrated_n_mode", row["calibrated_n"]
@@ -2221,7 +2221,7 @@ def write_report(
         run_items.extend(
             [
                 (
-                    "Range x = depth / spot size",
+                    "Range x = d / (D4sigma / 2)",
                     f"[{results_df['mean_x'].min():.4f}, "
                     f"{results_df['mean_x'].max():.4f}]",
                 ),
@@ -2303,7 +2303,7 @@ def write_report(
 
         header_map = {
             "mean_depth_microns": "Target mean, microns",
-            "mean_x": "depth / spot size",
+            "mean_x": "d / (D4sigma / 2)",
             "calibrated_n": "n estimate",
             "calibrated_n_95_low": "n, lower 95%",
             "calibrated_n_95_high": "n, upper 95%",
@@ -2442,8 +2442,8 @@ def write_report(
                 f"<b>Figure {figure_number}:</b> "
                 "Final AdditiveFOAM calibration fit. Symbols show local n "
                 "estimates with 95% intervals. The solid curve is n = A "
-                "log2(x) + B, where x is measured depth divided by spot "
-                "size. The shaded region is the 95% interval propagated "
+                "log2(x) + B, where x = d / (D4sigma / 2). The shaded "
+                "region is the 95% interval propagated "
                 "from local calibration uncertainty.",
                 styles["Caption"],
             )
